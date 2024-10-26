@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encuesta de Materiales</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        .file-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            position: relative;
+        }
+        .file-item img, .file-item video {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+        .remove-file, .description-input {
+            margin-top: 10px;
+        }
+        .full-width {
+            width: 100%;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+</head>
+<body class="bg-light">
+<div class="container py-5">
+    <h2 class="mb-4">Encuesta de Materiales</h2>
+    <form id="surveyForm" method="post" enctype="multipart/form-data" class="card p-4 bg-white shadow-sm">
+        {% csrf_token %}
+
+        <!-- Fotos con vista previa y descripción -->
+        <h5 class="mt-4">Subir Fotos</h5>
+        <input type="file" id="photo-upload" name="photos" accept="image/*" multiple class="form-control mb-3">
+        <div id="photo-grid" class="file-grid"></div>
+
+        <!-- Videos con vista previa y descripción -->
+        <h5 class="mt-4">Subir Videos</h5>
+        <input type="file" id="video-upload" name="videos" accept="video/*" multiple class="form-control mb-3">
+        <div id="video-grid" class="file-grid"></div>
+
+        <!-- Cláusulas obligatorias -->
+        <h5 class="mt-4">Cláusulas obligatorias</h5>
+        <div class="form-check">
+            {{ survey_form.clause_1 }}
+            <label class="form-check-label" for="id_clause_1">{{ survey_form.clause_1.label }}</label>
+        </div>
+        <div class="form-check">
+            {{ survey_form.clause_2 }}
+            <label class="form-check-label" for="id_clause_2">{{ survey_form.clause_2.label }}</label>
+        </div>
+        <div class="form-check">
+            {{ survey_form.clause_3 }}
+            <label class="form-check-label" for="id_clause_3">{{ survey_form.clause_3.label }}</label>
+        </div>
+        <div class="form-check">
+            {{ survey_form.clause_4 }}
+            <label class="form-check-label" for="id_clause_4">{{ survey_form.clause_4.label }}</label>
+        </div>
+        <div class="form-check">
+            {{ survey_form.clause_5 }}
+            <label class="form-check-label" for="id_clause_5">{{ survey_form.clause_5.label }}</label>
+        </div>
+
+        <!-- Apreciaciones -->
+        <h5 class="mt-4"><strong>Apreciaciones</strong></h5>
+        <div class="mb-3">
+            <textarea name="{{ survey_form.comments.name }}" class="form-control w-100" rows="4">{{ survey_form.comments.value }}</textarea>
+        </div>
+
+        <!-- Botón de envío -->
+        <button type="submit" class="btn btn-primary w-100 mt-4">Enviar</button>
+    </form>
+
+    <!-- Botón de cierre de sesión -->
+    <div class="text-center mt-3">
+        <form action="{% url 'logout' %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-secondary">Cerrar sesión</button>
+        </form>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        function previewPhotos(files) {
+            $('#photo-grid').empty();
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const item = $(`
+                        <div class="file-item">
+                            <img src="${e.target.result}" alt="Foto">
+                            <input type="text" name="photo_descriptions[]" placeholder="Descripción de la foto" class="form-control description-input">
+                            <button type="button" class="btn btn-danger btn-sm remove-file">Eliminar</button>
+                        </div>
+                    `);
+                    item.appendTo('#photo-grid');
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function previewVideos(files) {
+            $('#video-grid').empty();
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const item = $(`
+                        <div class="file-item">
+                            <video controls>
+                                <source src="${e.target.result}" type="${file.type}">
+                            </video>
+                            <input type="text" name="video_descriptions[]" placeholder="Descripción del video" class="form-control description-input">
+                            <button type="button" class="btn btn-danger btn-sm remove-file">Eliminar</button>
+                        </div>
+                    `);
+                    item.appendTo('#video-grid');
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        $('#photo-upload').on('change', function() {
+            previewPhotos(this.files);
+        });
+        
+        $('#video-upload').on('change', function() {
+            previewVideos(this.files);
+        });
+
+        $(document).on('click', '.remove-file', function() {
+            if ($('.file-item').length > 1) {
+                $(this).closest('.file-item').remove();
+            } else {
+                alert("Debe haber al menos un archivo de foto o video.");
+            }
+        });
+
+        new Sortable(document.getElementById('photo-grid'), { animation: 150 });
+        new Sortable(document.getElementById('video-grid'), { animation: 150 });
+
+        $('#surveyForm').submit(function(event) {
+            if ($('#photo-grid .file-item').length === 0 && $('#video-grid .file-item').length === 0) {
+                alert("Debe subir al menos una foto o un video para enviar el formulario.");
+                event.preventDefault();
+            }
+        });
+    });
+</script>
+</body>
+</html>
